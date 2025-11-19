@@ -2,7 +2,7 @@
     {
         "type": "invoice",
         "id": 3001,
-       "data": {
+        "data": {
             "invoice_number": "INV-1001",
             "invoicing_date": "2024-06-15",
             "due_date": "2024-07-15",
@@ -15,7 +15,7 @@
     {
         "type": "invoice",
         "id": 3002,
-       "data": {
+        "data": {
             "invoice_number": "INV-1002",
             "invoicing_date": "2024-06-14",
             "due_date": "2024-07-14",
@@ -28,7 +28,7 @@
     {
         "type": "invoice",
         "id": 3003,
-       "data": {
+        "data": {
             "invoice_number": "PINV-3001",
             "invoicing_date": "2024-06-18",
             "due_date": "2024-07-18",
@@ -40,7 +40,7 @@
     {
         "type": "invoice",
         "id": 3004,
-       "data": {
+        "data": {
             "invoice_number": "PINV-3002",
             "invoicing_date": "2024-06-30",
             "due_date": "2024-07-15",
@@ -52,7 +52,7 @@
     {
         "type": "invoice",
         "id": 3005,
-       "data": {
+        "data": {
             "invoice_number": "PINV-4001",
             "invoicing_date": "2024-07-18",
             "due_date": "2024-07-21",
@@ -64,7 +64,7 @@
     {
         "type": "invoice",
         "id": 3006,
-       "data": {
+        "data": {
             "invoice_number": "PINV-5001",
             "invoicing_date": "2024-07-05",
             "due_date": "2024-07-25",
@@ -76,7 +76,7 @@
     {
         "type": "invoice",
         "id": 3007,
-       "data": {
+        "data": {
             "invoice_number": "PINV-5100",
             "invoicing_date": "2024-08-02",
             "due_date": "2024-08-16",
@@ -88,7 +88,7 @@
     {
         "type": "receipt",
         "id": 3008,
-       "data": {
+        "data": {
             "receipt_number": "REC-3001",
             "receiving_date": "2024-06-12",
             "supplier": "Global Traders",
@@ -99,7 +99,7 @@
     {
         "type": "invoice",
         "id": 3009,
-       "data": {
+        "data": {
             "invoice_number": "INV-9999",
             "invoicing_date": "2024-08-01",
             "due_date": "2024-08-31",
