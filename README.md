@@ -3,6 +3,19 @@
 > [!NOTE]
 > We recommend spending **no more than 6 hours** on this task. Focus on the essentials – a functional and clear implementation is more important than perfection.
 
+## Quick Start
+
+```bash
+# Run the matching algorithm
+python run.py
+
+# Run unit tests (47 tests)
+python test_match.py
+
+```
+
+---
+
 ## Objective
 
 Your task is to write logic for matching bank transactions with potential attachments (receipts, invoices). In accounting, every transaction on a bank account must have an attachment as supporting evidence, so this is a real-world problem. The logic you implement must work in both directions. You will write two functions—`find_attachment` and `find_transaction`—and your goal is to fill in their implementations in `src/match.py`. Treat this repository as your starter template: build directly on top of it so that `run.py` continues to work without modifications.
@@ -140,3 +153,15 @@ The points-based system makes it intuitive to award scores for each criterion, w
 - Returns `None` when multiple candidates achieve the same top score
 - Prevents false positives in uncertain situations
 - Example: Transaction 2006 correctly returns `None` despite similar amount/date to attachment 3005
+
+---
+
+## Performance Improvements
+
+For production systems with larger datasets:
+
+- **Reference indexing**: Build hash maps of normalized references for O(1) lookup instead of O(n) scanning
+- **Data normalization**: Normalize names, references, and dates once when saving data rather than on every comparison
+- **Date filtering**: Pre-filter candidates by date ranges (e.g., ±30 days) before expensive fuzzy matching
+- **Early termination**: Stop searching after finding a reference match (tradeoff with false positives)
+- **Batch processing**: Process multiple transactions in parallel for large-scale matching operations
