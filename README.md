@@ -79,3 +79,64 @@ Email the link to the repository to **people@nocfo.io**. The email subject must 
 
 > [!IMPORTANT]
 > If you have technical challenges with completing the task, you can contact Juho via email at **juho.enala@nocfo.io**.
+
+---
+
+## Implementation Approach
+
+### Architecture
+
+The matching logic in `src/match.py` implements a **two-phase matching strategy**:
+
+1. **Reference Number Matching** (Phase 1)
+   - Strongest signal - creates definitive 1:1 matches
+   - Normalizes reference formats (removes whitespace, leading zeros)
+   - Preserves letter prefixes (RF, FI) while stripping zeros from numeric parts
+   - If found, immediately returns the match without further checks
+
+2. **Multi-Signal Matching** (Phase 2)
+   - Activated when no reference match exists
+   - Combines three signals: **amount**, **date**, and **counterparty name**
+   - Uses a scoring system to evaluate match confidence
+   - Rejects matches when multiple candidates have equal top scores (ambiguity detection)
+
+### Technical Decisions
+
+**Fuzzy Name Matching**
+- Implements Levenshtein distance algorithm to handle spelling variations
+- Allows up to 15% character differences for words longer than 6 characters
+- Requires exact matches for shorter words to avoid false positives
+- Successfully distinguishes "Meikäläinen" from "Meittiläinen" while accepting "Best Supplies" vs "Best Supplies EMEA"
+
+**Date Flexibility**
+- Checks both `invoicing_date` and `due_date` for invoices
+- Allows ±1 day tolerance for bank processing delays
+- Recognizes that payments rarely match invoice due dates exactly
+
+**Direction Compatibility**
+- Validates transaction flow: negative amounts (outgoing) must match purchase invoices/receipts with `supplier` fields
+- Positive amounts (incoming) must match sales invoices with `recipient` fields
+- Prevents mismatches between payment direction and document type
+
+**Points-Based Confidence Scoring (Normalized 0.0 - 1.0)**
+- Amount match: Required (not scored, acts as filter)
+- Date match: +2 points
+- Name match: +2 points
+- Null contact bonus: +1 point (only when contact missing but date matches)
+- **Maximum possible**: 5 points
+- **Confidence calculation**: `points / MAX_POINTS` (e.g., 4 points / 5 = 0.8 confidence)
+- **Minimum threshold**: 0.4 (40% confidence = 2+ points required)
+- Name mismatch when both sides have names: Disqualifying
+
+*Example confidence scores:*
+- Date + Name match: (2+2)/5 = **0.8 confidence** (HIGH)
+- Date + Null contact: (2+1)/5 = **0.6 confidence** (MEDIUM)
+- Name only: 2/5 = **0.4 confidence** (LOW, at threshold)
+- Amount only: 0/5 = **0.0 confidence** (REJECTED)
+
+The points-based system makes it intuitive to award scores for each criterion, while normalization to 0-1 scale allows interpreting thresholds as percentages. Adding new criteria is simple: award points and update `MAX_POINTS`.
+
+**Ambiguity Handling**
+- Returns `None` when multiple candidates achieve the same top score
+- Prevents false positives in uncertain situations
+- Example: Transaction 2006 correctly returns `None` despite similar amount/date to attachment 3005

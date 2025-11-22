@@ -11,10 +11,14 @@ FUZZY_MATCH_WORD_LENGTH_CUTOFF = 6  # Words longer than this allow fuzzy matchin
 FUZZY_MATCH_THRESHOLD_LONG = 0.85  # Allow 15% character differences for long words
 FUZZY_MATCH_THRESHOLD_SHORT = 1.0  # Require exact match for short words
 DEFAULT_DATE_TOLERANCE_DAYS = 1  # Banking processing delay tolerance
-MIN_MATCH_SCORE = 2  # Minimum score to consider a multi-signal match valid
-SCORE_DATE_MATCH = 2  # Points awarded for date match
-SCORE_NAME_MATCH = 2  # Points awarded for name match
-SCORE_NULL_CONTACT_BONUS = 1  # Bonus points when contact is null but date matches
+
+# Points-based scoring system (normalized to 0.0 - 1.0 scale)
+# Award points for each matching criterion, then divide by MAX_POINTS to get confidence percentage
+POINTS_DATE_MATCH = 2  # Points awarded when dates match
+POINTS_NAME_MATCH = 2  # Points awarded when counterparty names match
+POINTS_NULL_CONTACT_BONUS = 1  # Bonus points when contact is null but date matches
+MAX_POINTS = POINTS_DATE_MATCH + POINTS_NAME_MATCH + POINTS_NULL_CONTACT_BONUS  # Maximum possible points (sum of all point constants)
+MIN_MATCH_CONFIDENCE = 0.4  # Minimum confidence threshold (40%) to accept a match
 
 
 def normalize_reference(ref: str | None) -> str | None:
@@ -240,8 +244,8 @@ def _score_match(
     target_counterparty: str | None,
     target_ref: str | None,
     target_item: dict[str, Any],
-) -> tuple[int, dict[str, Any]] | None:
-    """Score a potential match between a source and target item.
+) -> tuple[float, dict[str, Any]] | None:
+    """Score a potential match between a source and target item using normalized confidence (0.0-1.0).
 
     Args:
         source_amount: Source item's transaction amount
@@ -255,12 +259,13 @@ def _score_match(
         target_item: The actual target dictionary (attachment or transaction)
 
     Returns:
-        Tuple of (score, target_item) if match is valid, None otherwise
+        Tuple of (confidence_score, target_item) if match is valid, None otherwise.
+        Confidence score is normalized between 0.0 and 1.0.
     """
     # Reference matching (strongest signal)
     if source_ref and target_ref and source_ref == target_ref:
-        # Reference match is definitive - return high score
-        return (100, target_item)
+        # Reference match is definitive - return perfect confidence
+        return (1.0, target_item)
 
     # Amount must match (REQUIRED for multi-signal matching)
     if not amounts_match(source_amount, target_amount):
@@ -272,28 +277,39 @@ def _score_match(
     # Check name compatibility
     name_matches = names_match(source_contact, target_counterparty)
 
-    # Scoring logic:
-    # - Both date AND name match: HIGH confidence
-    # - Date matches, contact is None on EITHER side: MEDIUM confidence
-    # - Date matches, BOTH have contacts but they don't match: REJECT
-    # - Name matches only: LOW confidence
-    # - Only amount matches: NO confidence
+    # Points-based scoring (normalized to 0.0-1.0 by dividing by MAX_POINTS):
+    # Award points for each matching criterion, then normalize to get confidence percentage
+    #
+    # Point allocation:
+    # - Date match: +2 points
+    # - Name match: +2 points
+    # - Null contact bonus: +1 point (only when contact missing but date matches)
+    # - Maximum: 5 points (auto-calculated: POINTS_DATE_MATCH + POINTS_NAME_MATCH + POINTS_NULL_CONTACT_BONUS)
+    #
+    # Example scores (points / MAX_POINTS = confidence):
+    # - Date + Name: (2+2)/5 = 0.8 confidence (HIGH)
+    # - Date + null contact: (2+1)/5 = 0.6 confidence (MEDIUM)
+    # - Name only: 2/5 = 0.4 confidence (LOW, at threshold)
+    # - Amount only: 0/5 = 0.0 confidence (REJECT)
 
-    score = 0
+    points = 0
     if date_matches:
-        score += SCORE_DATE_MATCH
+        points += POINTS_DATE_MATCH
     if name_matches:
-        score += SCORE_NAME_MATCH
+        points += POINTS_NAME_MATCH
     if (source_contact is None or target_counterparty is None) and date_matches:
-        score += SCORE_NULL_CONTACT_BONUS  # Boost when either contact is null but date matches
+        points += POINTS_NULL_CONTACT_BONUS
 
     # Critical: If BOTH have contacts but they don't match, reject this candidate
     # This prevents false matches like 2006 (Matti Meittiläinen) matching 3005 (Matti Meikäläinen Tmi)
     if source_contact is not None and target_counterparty is not None and not name_matches and date_matches:
         return None  # Name mismatch is disqualifying when both sides have names
 
-    if score >= MIN_MATCH_SCORE:
-        return (score, target_item)
+    # Normalize points to 0.0-1.0 confidence scale
+    confidence = points / MAX_POINTS
+
+    if confidence >= MIN_MATCH_CONFIDENCE:
+        return (confidence, target_item)
 
     return None
 
